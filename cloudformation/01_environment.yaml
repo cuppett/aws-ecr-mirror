@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Batch Compute Environment for ECR Mirror Jobs
+
+Parameters:
+
+  EnvironmentType:
+    Description: The type of runtime (and cost model) to use
+    Type: String
+    Default: FARGATE_SPOT
+    AllowedValues:
+      - FARGATE
+      - FARGATE_SPOT
+  MaxVcpu:
+    Description: The maximum amount of concurrent CPUs to use for jobs.
+    Type: Number
+    Default: 8
+    MinValue: 1
+  ComputeVpc:
+    Description: The vpc to launch the mirroring jobs into.
+    Type: AWS::EC2::VPC::Id
+  ComputeSubnets:
+    Description: The subnets to launch the mirroring jobs into.
+    Type: List<AWS::EC2::Subnet::Id>
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Compute Environment"
+        Parameters:
+          - EnvironmentType
+          - MaxVcpu
+      - Label:
+          default: "Networking"
+        Parameters:
+          - ComputeVpc
+          - ComputeSubnets
+    ParameterLabels:
+      ComputeSubnets:
+        default: "Subnets"
+      ComputeVpc:
+        default: "VPC"
+      EnvironmentType:
+        default: "Environment Type"
+      MaxVcpu:
+        default: "Maximum VCPUs"
+
+Resources:
+  ComputeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Compute cluster
+      VpcId: !Ref ComputeVpc
+
+  ComputeEnvironment:
+    Type: AWS::Batch::ComputeEnvironment
+    Properties:
+      Type: MANAGED
+      ComputeEnvironmentName: !Join ["-", [!Ref "AWS::StackName", "compute"]]
+      ComputeResources:
+        MaxvCpus: !Ref MaxVcpu
+        Type: FARGATE_SPOT
+        SecurityGroupIds:
+          - !Ref ComputeSecurityGroup
+        Subnets: !Ref ComputeSubnets
+      State: ENABLED
+
+  ControlQueue:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      ComputeEnvironmentOrder:
+        - ComputeEnvironment: !Ref ComputeEnvironment
+          Order: 1
+      Priority: 1
+
+  MirrorQueue:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      ComputeEnvironmentOrder:
+        - ComputeEnvironment: !Ref ComputeEnvironment
+          Order: 1
+      Priority: 2
+
+Outputs:
+  ControlQueue:
+    Description: Control queue ARN
+    Value: !Ref ControlQueue
+  MirrorQueue:
+    Description: Mirror queue ARN
+    Value: !Ref MirrorQueue
