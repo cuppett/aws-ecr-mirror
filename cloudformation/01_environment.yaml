@@ -3,6 +3,12 @@ Description: Batch Compute Environment for ECR Mirror Jobs
 
 Parameters:
 
+  ComputeSubnets:
+    Description: The subnets to launch the mirroring jobs into.
+    Type: List<AWS::EC2::Subnet::Id>
+  ComputeVpc:
+    Description: The vpc to launch the mirroring jobs into.
+    Type: AWS::EC2::VPC::Id
   EnvironmentType:
     Description: The type of runtime (and cost model) to use
     Type: String
@@ -10,21 +16,29 @@ Parameters:
     AllowedValues:
       - FARGATE
       - FARGATE_SPOT
+  LogRetention:
+    Description: How long to retain logs (in days)
+    Type: Number
+    MinValue: 1
+    Default: 7
   MaxVcpu:
     Description: The maximum amount of concurrent CPUs to use for jobs.
     Type: Number
     Default: 8
     MinValue: 1
-  ComputeVpc:
-    Description: The vpc to launch the mirroring jobs into.
-    Type: AWS::EC2::VPC::Id
-  ComputeSubnets:
-    Description: The subnets to launch the mirroring jobs into.
-    Type: List<AWS::EC2::Subnet::Id>
+  MirrorImageName:
+    Description: Mirroring image name and tag
+    Type: String
+    Default: 1234567890.dkr.ecr.us-east-1.amazonaws.com/aws-ecr-mirror:main
 
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
+      - Label:
+          default: "Job Definition"
+        Parameters:
+          - MirrorImageName
+          - LogRetention
       - Label:
           default: "Compute Environment"
         Parameters:
@@ -42,8 +56,12 @@ Metadata:
         default: "VPC"
       EnvironmentType:
         default: "Environment Type"
+      LogRetention:
+        default: "Log Retention"
       MaxVcpu:
         default: "Maximum VCPUs"
+      MirrorImageName:
+        default: "Mirror Image Name"
 
 Resources:
   ComputeSecurityGroup:
@@ -81,6 +99,87 @@ Resources:
           Order: 1
       Priority: 2
 
+  ContainerMirrorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: !Ref LogRetention
+
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "ecs-tasks.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "ecs-tasks.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: !Join [ "-", [ !Ref "AWS::StackName", "ecr-policy" ]]
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "ecr:BatchCheckLayerAvailability"
+                  - "ecr:BatchGetImage"
+                  - "ecr:CompleteLayerUpload"
+                  - "ecr:GetAuthorizationToken"
+                  - "ecr:GetDownloadUrlForLayer"
+                  - "ecr:InitiateLayerUpload"
+                  - "ecr:PutImage"
+                  - "ecr:TagResource"
+                  - "ecr:UploadLayerPart"
+                Resource: "*"
+
+  MirrorJob:
+    Type: AWS::Batch::JobDefinition
+    Properties:
+      ContainerProperties:
+        Command:
+          - python3
+          - ./mirror.py
+          - Ref::source
+          - Ref::dest
+        ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+        Image: !Ref MirrorImageName
+        JobRoleArn: !GetAtt TaskRole.Arn
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-region: !Ref "AWS::Region"
+            awslogs-group: !Ref ContainerMirrorLogGroup
+        NetworkConfiguration:
+          AssignPublicIp: ENABLED
+        ResourceRequirements:
+          - Type: MEMORY
+            Value: 512
+          - Type: VCPU
+            Value: .25
+      PlatformCapabilities:
+        - FARGATE
+      PropagateTags: True
+      Timeout:
+        AttemptDurationSeconds: 300
+      Type: container
+
 Outputs:
   ControlQueue:
     Description: Control queue ARN
@@ -88,3 +187,6 @@ Outputs:
   MirrorQueue:
     Description: Mirror queue ARN
     Value: !Ref MirrorQueue
+  MirrorJob:
+    Description: Mirror job ARN
+    Value: !Ref MirrorJob

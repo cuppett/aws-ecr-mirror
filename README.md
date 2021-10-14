@@ -51,7 +51,50 @@ in your account which may lead to items on your bill, here is a helpful checklis
 - [DynamoDB pricing][dynamodb-pricing]
 - [Lambda pricing][lambda-pricing]
 
+## Running a Mirror Job Ad-Hoc
+
+The mirror.py has the following syntax:
+
+```
+python mirror.py src dest1 [dest2 [... destN]]
+```
+
+The ```dest``` parameters can be either space or comma-separated. 
+
+Example:
+
+```commandline
+python mirror.py registry.fedoraproject.org/fedora:34 \
+  0123456789.dkr.ecr.us-east-1.amazonaws.com/fedora:34,0123456789.dkr.ecr.us-east-1.amazonaws.com/fedora:latest \ 
+  0123456789.dkr.ecr.us-east-2.amazonaws.com/fedora:34 0123456789.dkr.ecr.us-east-2.amazonaws.com/fedora:latest
+```
+
+The above will copy the public fedora:34 image to four separate location/tags. 
+
+### Submitting to AWS Batch
+
+Now that we have a job environment and queues for these things, we can easily submit jobs independently of the system
+and have the cloud mirror in images on our behalf.
+
+```commandline
+aws batch --region us-east-1 submit-job \
+  --job-name test \
+  --job-queue MirrorQueue-4b9b16a4f56c734 \  
+  --job-definition MirrorJob-6cc6ca701f705b0 \  
+  --parameters source=registry.fedoraproject.org/fedora:34,dest=0123456789.dkr.ecr.us-east-1.amazonaws.com/fedora:34
+{
+    "jobArn": "arn:aws:batch:us-east-1:0123456789:job/28399b82-5a54-4650-a697-6666501a360a",
+    "jobName": "test",
+    "jobId": "28399b82-5a54-4650-a697-6666501a360a"
+}
+```
+
+Using the JSON format of the [CLI command][cli-submit-job] will allow you to submit a comma-separated list of 
+destinations.
+
+
 [aws-codebuild-podman]: https://github.com/cuppett/aws-codebuild-podman
+[cli-submit-job]: https://docs.aws.amazon.com/cli/latest/reference/batch/submit-job.html
 [cloudformation]: https://aws.amazon.com/cloudformation/
 [batch]: https://aws.amazon.com/batch/
 [dynamodb]: https://aws.amazon.com/dynamodb/
