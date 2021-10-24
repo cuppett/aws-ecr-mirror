@@ -1,4 +1,4 @@
-# Mirror Images in/out of AWS using ECR, Batch & Lambda
+# Mirror Images in/out of AWS using ECR & Batch
 
 This repository builds on the work started in [aws-codebuild-podman]. Using the plumbing from that project, 
 we can build containers with [skopeo] capable of running in [AWS Batch][batch] to mirror images in and out
@@ -20,8 +20,9 @@ and the build jobs needed to use [skopeo] in AWS Batch.
 
 ## Capabilities
 
-- [ ] Create all required resources with [CloudFormation][cloudformation]
-- [ ] Mirror changed images into AWS periodically
+- [x] Create all required resources with [CloudFormation][cloudformation]
+- [x] Mirror changed images into AWS periodically
+- [x] Mirror changed images within AWS based on ECR CloudWatch Event Rule trigger
 - [ ] Mirror changed images to external repositories on push
 
 ## Intended Design
