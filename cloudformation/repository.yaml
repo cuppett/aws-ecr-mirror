@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Template for single, simple ECR Repository
+
+Parameters:
+  ImageRepositoryName:
+    Description: Name used for the ECR repository
+    MinLength: 2
+    MaxLength: 256
+    AllowedPattern: ^(?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*
+    Type: String
+
+  LifecyclePolicy:
+    Description: "See also: https://docs.aws.amazon.com/AmazonECR/latest/userguide/LifecyclePolicies.html"
+    Type: String
+    MinLength: 100
+    MaxLength: 30720
+    Default: "{\"rules\":[{\"rulePriority\":1,\"description\":\"Remove untagged after 2w\",\"selection\":{\"tagStatus\":\"untagged\",\"countType\":\"sinceImagePushed\",\"countUnit\":\"days\",\"countNumber\":14},\"action\":{\"type\":\"expire\"}}]}"
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Registry Settings"
+        Parameters:
+          - ImageRepositoryName
+          - LifecyclePolicy
+    ParameterLabels:
+      ImageRepositoryName:
+        default: "Image Repository Name"
+      LifecyclePolicy:
+        default: "Lifecycle Policy"
+
+Resources:
+  EcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      RepositoryName: !Ref ImageRepositoryName
+      LifecyclePolicy:
+        LifecyclePolicyText: !Ref LifecyclePolicy
+
+Outputs:
+  ImageRepository:
+    Description: Name used for the ECR repository
+    Value: !Ref ImageRepositoryName
+    Export:
+      Name: !Join ["-", [!Ref "AWS::StackName", "ImageRepositoryName"]]
