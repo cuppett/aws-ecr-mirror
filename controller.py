@@ -56,7 +56,10 @@ def identify_targets(row: dict) -> list:
     )
     print(source_result)
     source_digest = str(source_result.stdout)
-    print("Source Digest: " + source_digest)
+
+    if source_digest == "":
+        return []
+
     to_remove = []
     for dest in destinations:
         dest_result = subprocess.run(
@@ -65,6 +68,7 @@ def identify_targets(row: dict) -> list:
         )
         print(dest_result)
         dest_digest = str(dest_result.stdout)
+
         if dest_digest == source_digest:
             print("Unneeded " + dest)
             to_remove.append(dest)
