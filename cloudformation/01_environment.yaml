@@ -86,7 +86,6 @@ Resources:
 
   MirroringEventRole:
     Type: AWS::IAM::Role
-    Condition: HasRate
     Properties:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -122,6 +121,36 @@ Resources:
           BatchParameters:
             JobDefinition: !Ref ControllerJob
             JobName: "timed-mirror-job"
+
+  ChangedImageRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Trigger container mirror on image changes"
+      EventPattern:
+        source:
+          - aws.ecr
+        detail-type:
+          - ECR Image Action
+        detail:
+          action-type:
+            - PUSH
+          result:
+            - SUCCESS
+      Targets:
+        - Arn: !Ref ControlQueue
+          RoleArn: !GetAtt MirroringEventRole.Arn
+          Id: !Join ["-", ["mirror", "single", !Ref "AWS::StackName"]]
+          BatchParameters:
+            JobDefinition: !Ref IndividualControllerJob
+            JobName: "single-mirror-job"
+          InputTransformer:
+            InputPathsMap:
+              "Repository": "$.detail.repository-name"
+              "Tag": "$.detail.image-tag"
+            InputTemplate:  |
+              {
+                 "Parameters" : {"repository": <Repository>, "tag": <Tag>}
+              }
 
   ImageMirrorTable:
     Type: AWS::DynamoDB::Table
@@ -289,6 +318,7 @@ Resources:
               - Effect: "Allow"
                 Action:
                   - "dynamodb:Scan"
+                  - "dynamodb:Query"
                 Resource:
                   - !GetAtt ImageMirrorTable.Arn
         - PolicyName: !Join [ "-", [ !Ref "AWS::StackName", "batch-policy" ]]
@@ -332,6 +362,40 @@ Resources:
       PropagateTags: True
       Timeout:
         AttemptDurationSeconds: 3600
+      Type: container
+
+  IndividualControllerJob:
+    Type: AWS::Batch::JobDefinition
+    Properties:
+      ContainerProperties:
+        Command:
+          - python3
+          - ./controller.py
+          - !Ref ImageMirrorTable
+          - !Ref MirrorQueue
+          - !Ref MirrorJob
+          - Ref::repository
+          - Ref::tag
+        ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+        Image: !Ref MirrorImageName
+        JobRoleArn: !GetAtt ControllerTaskRole.Arn
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-region: !Ref "AWS::Region"
+            awslogs-group: !Ref ContainerControllerLogGroup
+        NetworkConfiguration:
+          AssignPublicIp: ENABLED
+        ResourceRequirements:
+          - Type: MEMORY
+            Value: 512
+          - Type: VCPU
+            Value: .25
+      PlatformCapabilities:
+        - FARGATE
+      PropagateTags: True
+      Timeout:
+        AttemptDurationSeconds: 60
       Type: container
 
 Outputs:

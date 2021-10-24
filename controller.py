@@ -4,9 +4,13 @@ import helpers
 import subprocess
 import sys
 
+from boto3.dynamodb.conditions import Key
+
 # Capture the logged in ECR repositories here (so we save some effort looping through)
 logged_in = []
-
+session = boto3.session.Session()
+region = session.region_name
+account_id = session.client("sts").get_caller_identity()["Account"]
 
 def identify_targets(row: dict) -> list:
     # Accumulate the repositories and destinations involved.
@@ -90,8 +94,8 @@ def submit_mirror_job(queue: str, definition: str, source: str, destinations: li
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 4:
-        print("Usage: controller.py mirror-table-name mirror_job_queue mirror_job_definition")
+    if len(sys.argv) < 4 or len(sys.argv) != 6:
+        print("Usage: controller.py mirror-table-name mirror_job_queue mirror_job_definition [repository tag]")
         exit(1)
 
     # Get the service resources/clients.
@@ -99,8 +103,19 @@ if __name__ == '__main__':
 
     # Working it.
     table = dynamodb.Table(sys.argv[1])
-    response = table.scan()
-    rows = response['Items']
+
+    if len(sys.argv) == 6:
+        repository = sys.argv[4]
+        tag = sys.argv[5]
+        key = account_id + ".dkr.ecr." + region + ".amazonaws.com/" + repository + ":" + tag
+        print("Individual mirror request for: " + key)
+        response = table.query(
+            KeyConditionExpression=Key('Source').eq(key)
+        )
+        rows = response["Items"]
+    else:
+        response = table.scan()
+        rows = response["Items"]
 
     # Iterate over the rows
     for item in rows:

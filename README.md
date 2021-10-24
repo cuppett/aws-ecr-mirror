@@ -28,13 +28,11 @@ and the build jobs needed to use [skopeo] in AWS Batch.
 
 ![Repository Stack Example](images/arch.png)
 
-1. A CloudWatch timer of the user's choosing invokes a lambda.
-2. The Lambda identifies if the previous mirroring activity has completed.
-   1. If the previous job is still running, generate an error (adjustments will need made)
-   2. If not, submit the control job
-3. The control batch job loops over the DynamoDB table
+1. A CloudWatch timer of the user's choosing invokes AWS Batch (controller.py)
+2. -or- A CloudWatch event on ECR image changes invokes AWS Batch (controller.py)
+3. The control batch job queries the DynamoDB table
    1. Identify if the SHAs still match from source/target
-   2. If not, submit a copy/mirror job
+   2. If not, submit a copy/mirror job (mirror.py)
 4. The mirror jobs run a `skopeo copy --all` from src->dest
 
 ### Mirror Table Definition
