@@ -94,7 +94,7 @@ def submit_mirror_job(queue: str, definition: str, source: str, destinations: li
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 4 or len(sys.argv) != 6:
+    if len(sys.argv) < 4 and len(sys.argv) != 6:
         print("Usage: controller.py mirror-table-name mirror_job_queue mirror_job_definition [repository tag]")
         exit(1)
 
