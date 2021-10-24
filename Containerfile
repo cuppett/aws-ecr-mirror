@@ -31,5 +31,5 @@ RUN set -ex; \
     echo "[engine]" > /etc/containers/containers.conf; \
     echo "events_logger = \"file\"" >> /etc/containers/containers.conf;
 
-COPY requirements.txt controller.py mirror.py ./
+COPY requirements.txt controller.py mirror.py helpers.py ./
 RUN pip install -r requirements.txt

@@ -26,6 +26,19 @@ Parameters:
     Type: Number
     Default: 8
     MinValue: 1
+  MirroringFrequency:
+    Description: Scheduled invocation of the batch mirroring
+    Type: String
+    Default: none
+    AllowedValues:
+      - "none"
+      - "1 hour"
+      - "4 hours"
+      - "12 hours"
+      - "1 days"
+      - "7 days"
+      - "14 days"
+      - "28 days"
   MirrorImageName:
     Description: Mirroring image name and tag
     Type: String
@@ -38,6 +51,7 @@ Metadata:
           default: "Job Definition"
         Parameters:
           - MirrorImageName
+          - MirroringFrequency
           - LogRetention
       - Label:
           default: "Compute Environment"
@@ -60,10 +74,66 @@ Metadata:
         default: "Log Retention"
       MaxVcpu:
         default: "Maximum VCPUs"
+      MirroringFrequency:
+        default: "Mirroring Frequency"
       MirrorImageName:
         default: "Mirror Image Name"
 
+Conditions:
+  HasRate: !Not [!Equals ["none", !Ref MirroringFrequency]]
+
 Resources:
+
+  MirroringEventRole:
+    Type: AWS::IAM::Role
+    Condition: HasRate
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "events.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: !Join ["-", [!Ref "AWS::StackName", "events-mirroring-policy"]]
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "batch:SubmitJob"
+                Resource:
+                  - !Ref ControllerJob
+                  - !Ref ControlQueue
+
+  MirroringTimedRule:
+    Type: AWS::Events::Rule
+    Condition: HasRate
+    Properties:
+      Description: !Join [" ", ["Run every", !Ref MirroringFrequency]]
+      ScheduleExpression: !Join ["", ["rate(", !Ref MirroringFrequency, ")"]]
+      Targets:
+        - Arn: !Ref ControlQueue
+          RoleArn: !GetAtt MirroringEventRole.Arn
+          Id: !Join ["-", ["mirror", "batch", !Ref "AWS::StackName"]]
+          BatchParameters:
+            JobDefinition: !Ref ControllerJob
+            JobName: "timed-mirror-job"
+
+  ImageMirrorTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: Source
+        AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+      - AttributeName: Source
+        KeyType: HASH
+
   ComputeSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -99,6 +169,11 @@ Resources:
           Order: 1
       Priority: 2
 
+  ContainerControllerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: !Ref LogRetention
+
   ContainerMirrorLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -119,7 +194,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
-  TaskRole:
+  MirrorTaskRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -160,7 +235,7 @@ Resources:
           - Ref::dest
         ExecutionRoleArn: !GetAtt ExecutionRole.Arn
         Image: !Ref MirrorImageName
-        JobRoleArn: !GetAtt TaskRole.Arn
+        JobRoleArn: !GetAtt MirrorTaskRole.Arn
         LogConfiguration:
           LogDriver: awslogs
           Options:
@@ -180,13 +255,98 @@ Resources:
         AttemptDurationSeconds: 300
       Type: container
 
+  ControllerTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "ecs-tasks.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: !Join [ "-", [ !Ref "AWS::StackName", "ecr-policy" ]]
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "ecr:BatchCheckLayerAvailability"
+                  - "ecr:BatchGetImage"
+                  - "ecr:DescribeImages"
+                  - "ecr:DescribeRepositories"
+                  - "ecr:GetAuthorizationToken"
+                  - "ecr:GetDownloadUrlForLayer"
+                  - "ecr:ListImages"
+                Resource: "*"
+        - PolicyName: !Join [ "-", [ !Ref "AWS::StackName", "dynamodb-policy" ]]
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "dynamodb:Scan"
+                Resource:
+                  - !GetAtt ImageMirrorTable.Arn
+        - PolicyName: !Join [ "-", [ !Ref "AWS::StackName", "batch-policy" ]]
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "batch:SubmitJob"
+                Resource:
+                  - !Ref MirrorJob
+                  - !Ref MirrorQueue
+
+  ControllerJob:
+    Type: AWS::Batch::JobDefinition
+    Properties:
+      ContainerProperties:
+        Command:
+          - python3
+          - ./controller.py
+          - !Ref ImageMirrorTable
+          - !Ref MirrorQueue
+          - !Ref MirrorJob
+        ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+        Image: !Ref MirrorImageName
+        JobRoleArn: !GetAtt ControllerTaskRole.Arn
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-region: !Ref "AWS::Region"
+            awslogs-group: !Ref ContainerControllerLogGroup
+        NetworkConfiguration:
+          AssignPublicIp: ENABLED
+        ResourceRequirements:
+          - Type: MEMORY
+            Value: 512
+          - Type: VCPU
+            Value: .25
+      PlatformCapabilities:
+        - FARGATE
+      PropagateTags: True
+      Timeout:
+        AttemptDurationSeconds: 3600
+      Type: container
+
 Outputs:
   ControlQueue:
     Description: Control queue ARN
     Value: !Ref ControlQueue
+  ControllerJob:
+    Description: Controller job ARN
+    Value: !Ref ControllerJob
   MirrorQueue:
     Description: Mirror queue ARN
     Value: !Ref MirrorQueue
   MirrorJob:
     Description: Mirror job ARN
     Value: !Ref MirrorJob
+  MirrorTable:
+    Description: The image mirror definition table
+    Value: !Ref ImageMirrorTable

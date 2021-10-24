@@ -37,6 +37,17 @@ and the build jobs needed to use [skopeo] in AWS Batch.
    2. If not, submit a copy/mirror job
 4. The mirror jobs run a `skopeo copy --all` from src->dest
 
+### Mirror Table Definition
+
+The core of the mirror table is a source and destination. Destination can be individual strings,
+comma-separated strings or a string list.
+
+| Source                              | Destination
+|-------------------------------------|------------
+| docker.io/library/golang:1.17       | 0123456789.dkr.ecr.us-east-1.amazonaws.com/golang:1.17<br>0123456789.dkr.ecr.us-east-1.amazonaws.com/golang:latest
+| docker.io/library/postgres:14       | 0123456789.dkr.ecr.us-east-1.amazonaws.com/postgres:14,0123456789.dkr.ecr.us-east-1.amazonaws.com/postgres:latest
+| registry.fedoraproject.org/fedora:34| 0123456789.dkr.ecr.us-east-1.amazonaws.com/fedora:34
+
 ## Pre-requisites
 
 - [aws-codebuild-podman] tools & resources configured and available in your account
