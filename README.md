@@ -11,8 +11,6 @@ AWS cloud:
 |----------------------|------------
 | [Batch][batch]       | Managed, batch environment. This is perfect for highly-parallel and/or long-running jobs.      
 | [ECR][ecr]           | Managed container image repository.
-| [Lambda][lambda]     | Functional execution in response to events. This can be custom events, but also events within the AWS cloud.
-| [SQS][sqs]           | Managed queueing. Queue entries serve as jobs for AWS Batch and also as event sources for AWS Lambda.
 | [DynamoDB][dynamodb] | Scalable NoSQL storage for easy key/value storage and retrieval across many AWS services and APIs.
 
 This repository provides the templates and descriptions needed to provision container image repositories
@@ -62,7 +60,6 @@ in your account which may lead to items on your bill, here is a helpful checklis
 (in addition to those from [aws-codebuild-podman]:
 
 - [DynamoDB pricing][dynamodb-pricing]
-- [Lambda pricing][lambda-pricing]
 
 ## Running a Mirror Job Ad-Hoc
 
@@ -114,7 +111,4 @@ destinations.
 [dynamodb-pricing]: https://aws.amazon.com/dynamodb/pricing/
 [ecr]: https://aws.amazon.com/ecr/
 [ecr-replication]: https://docs.aws.amazon.com/AmazonECR/latest/userguide/replication.html
-[lambda]: https://aws.amazon.com/lambda/
-[lambda-pricing]: https://aws.amazon.com/lambda/pricing/
-[sqs]: https://aws.amazon.com/sqs/
 [skopeo]: https://github.com/containers/skopeo
