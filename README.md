@@ -25,6 +25,9 @@ and the build jobs needed to use [skopeo] in AWS Batch.
 - [x] Mirror changed images within AWS based on ECR CloudWatch Event Rule trigger
 - [ ] Mirror changed images to external repositories on push
 
+> Note: For ECR<->ECR replication, you should use the built-in [ECR private replication][ecr-replication] functionality.
+
+
 ## Intended Design
 
 ![Repository Stack Example](images/arch.png)
@@ -110,6 +113,7 @@ destinations.
 [dynamodb]: https://aws.amazon.com/dynamodb/
 [dynamodb-pricing]: https://aws.amazon.com/dynamodb/pricing/
 [ecr]: https://aws.amazon.com/ecr/
+[ecr-replication]: https://docs.aws.amazon.com/AmazonECR/latest/userguide/replication.html
 [lambda]: https://aws.amazon.com/lambda/
 [lambda-pricing]: https://aws.amazon.com/lambda/pricing/
 [sqs]: https://aws.amazon.com/sqs/
