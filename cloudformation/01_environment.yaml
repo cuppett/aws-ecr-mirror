@@ -106,6 +106,7 @@ Resources:
                   - "batch:SubmitJob"
                 Resource:
                   - !Ref ControllerJob
+                  - !Ref IndividualControllerJob
                   - !Ref ControlQueue
 
   MirroringTimedRule:
