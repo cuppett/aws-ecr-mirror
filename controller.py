@@ -1,38 +1,59 @@
+from boto3.dynamodb.conditions import Key
+from botocore.config import Config
+from operator import itemgetter
+
 import boto3
 import hashlib
-import helpers
 import subprocess
 import sys
+import traceback
 
-from boto3.dynamodb.conditions import Key
-
-# Capture the logged in ECR repositories here (so we save some effort looping through)
-logged_in = []
 session = boto3.session.Session()
 region = session.region_name
 account_id = session.client("sts").get_caller_identity()["Account"]
 
 
-def get_image_digest(image_name: str) -> str:
-    result = subprocess.run(
-        ["skopeo", "--command-timeout", "10s", "inspect", "--retry-times", "5", "--format", "'{{ .Digest }}'",
-         "docker://" + image_name],
-        capture_output=True
+def get_ecr_image_digest(image_url: str) -> str:
+    hostname, image = itemgetter(0, 1)(image_url.split("/", 1))
+    ecr_account, ecr_region = itemgetter(0, 3)(hostname.split("."))
+    image_name, ecr_tag = itemgetter(0, 1)(image.split(":"))
+
+    ecr_config = Config(
+        region_name=ecr_region
     )
-    print(result)
-    return str(result.stdout)
+    ecr_client = boto3.client('ecr', config=ecr_config)
+
+    ecr_image = ecr_client.describe_images(
+        registryId=ecr_account,
+        repositoryName=image_name,
+        imageIds=[
+            {
+                'imageTag': ecr_tag
+            },
+        ]
+    )
+    print(ecr_image)
+    if len(ecr_image['imageDetails']) > 0:
+        return ecr_image['imageDetails'][0]['imageDigest'];
+    else:
+        return ""
+
+
+def get_image_digest(image_url: str) -> str:
+    if "dkr.ecr" in image_url:
+        return get_ecr_image_digest(image_url)
+    else:
+        result = subprocess.run(
+            ["skopeo", "--command-timeout", "10s", "inspect", "--retry-times", "5", "--format", "'{{ .Digest }}'",
+             "docker://" + image_url],
+            capture_output=True
+        )
+        print(result)
+        result_digest = result.stdout.decode('UTF-8').strip().strip("'")
+        return result_digest
 
 
 def identify_targets(row: dict) -> list:
-    # Accumulate the repositories and destinations involved.
-
-    # Check Source first
-    repositories = []
-    if "dkr.ecr" in row["Source"]:
-        repository = row["Source"][:row["Source"].index("/")]
-        if repository not in logged_in:
-            repositories.append(repository)
-
     # Accumulate the destinations
     destinations = []
     if "Destination" in row:
@@ -44,21 +65,6 @@ def identify_targets(row: dict) -> list:
         else:
             for dest in row["Destination"].split(","):
                 destinations.append(dest)
-
-        # Accumulate the log-in sources
-        for dest in destinations:
-            if "dkr.ecr" in dest:
-                repository = dest[:dest.index("/")]
-                if repository not in repositories and repository not in logged_in:
-                    repositories.append(repository)
-
-    # Log in to everything we haven't
-    for repo in repositories:
-        rc = helpers.ecr_login(repo)
-        if rc > 0:
-            print("Failed logging in to: " + repo)
-        else:
-            logged_in.append(repo)
 
     # Check the tags
     source_digest = get_image_digest(row["Source"])
@@ -112,13 +118,13 @@ if __name__ == '__main__':
         tag = sys.argv[5]
         key = account_id + ".dkr.ecr." + region + ".amazonaws.com/" + repository + ":" + tag
         print("Individual mirror request for: " + key)
-        response = table.query(
+        query_results = table.query(
             KeyConditionExpression=Key('Source').eq(key)
         )
-        rows = response["Items"]
+        rows = query_results["Items"]
     else:
-        response = table.scan()
-        rows = response["Items"]
+        scan_results = table.scan()
+        rows = scan_results["Items"]
 
     # Iterate over the rows
     for item in rows:
@@ -133,5 +139,7 @@ if __name__ == '__main__':
                 print("No mirroring required.")
         except:
             print("Insulating larger program. Exception occurred on this row.")
+            print(traceback.format_exc())
+            print(sys.exc_info()[2])
 
     exit(0)
