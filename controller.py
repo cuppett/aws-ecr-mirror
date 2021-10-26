@@ -12,6 +12,17 @@ session = boto3.session.Session()
 region = session.region_name
 account_id = session.client("sts").get_caller_identity()["Account"]
 
+
+def get_image_digest(image_name: str) -> str:
+    result = subprocess.run(
+        ["skopeo", "--command-timeout", "10s", "inspect", "--retry-times", "5", "--format", "'{{ .Digest }}'",
+         "docker://" + image_name],
+        capture_output=True
+    )
+    print(result)
+    return str(result.stdout)
+
+
 def identify_targets(row: dict) -> list:
     # Accumulate the repositories and destinations involved.
 
@@ -50,25 +61,13 @@ def identify_targets(row: dict) -> list:
             logged_in.append(repo)
 
     # Check the tags
-    source_result = subprocess.run(
-        ["skopeo", "inspect", "--format", "'{{ .Digest }}'", "docker://" + row["Source"]],
-        capture_output=True
-    )
-    print(source_result)
-    source_digest = str(source_result.stdout)
-
-    if source_digest == "":
+    source_digest = get_image_digest(row["Source"])
+    if len(source_digest) < 64:
         return []
 
     to_remove = []
     for dest in destinations:
-        dest_result = subprocess.run(
-            ["skopeo", "inspect", "--format", "'{{ .Digest }}'", "docker://" + dest],
-            capture_output=True
-        )
-        print(dest_result)
-        dest_digest = str(dest_result.stdout)
-
+        dest_digest = get_image_digest(dest)
         if dest_digest == source_digest:
             print("Unneeded " + dest)
             to_remove.append(dest)
