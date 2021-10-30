@@ -21,7 +21,8 @@ and the build jobs needed to use [skopeo] in AWS Batch.
 - [x] Create all required resources with [CloudFormation][cloudformation]
 - [x] Mirror changed images into AWS periodically
 - [x] Mirror changed images within AWS based on ECR CloudWatch Event Rule trigger
-- [ ] Mirror changed images to external repositories on push
+- [x] Mirror changed images to external repositories on push
+- [x] Mirror to/from authenticated repositories
 
 > Note: For ECR<->ECR replication, you should use the built-in [ECR private replication][ecr-replication] functionality.
 

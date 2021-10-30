@@ -8,6 +8,8 @@ import subprocess
 import sys
 import traceback
 
+from helpers import seed_auth
+
 session = boto3.session.Session()
 region = session.region_name
 account_id = session.client("sts").get_caller_identity()["Account"]
@@ -44,7 +46,7 @@ def get_image_digest(image_url: str) -> str:
         return get_ecr_image_digest(image_url)
     else:
         result = subprocess.run(
-            ["skopeo", "--command-timeout", "10s", "inspect", "--retry-times", "5", "--format", "'{{ .Digest }}'",
+            ["skopeo", "--command-timeout", "10s", "inspect", "--authfile", "/tmp/auth.json", "--retry-times", "5", "--format", "'{{ .Digest }}'",
              "docker://" + image_url],
             capture_output=True
         )
@@ -106,6 +108,8 @@ if __name__ == '__main__':
     if len(sys.argv) < 4 and len(sys.argv) != 6:
         print("Usage: controller.py mirror-table-name mirror_job_queue mirror_job_definition [repository tag]")
         exit(1)
+
+    seed_auth()
 
     # Get the service resources/clients.
     dynamodb = boto3.resource('dynamodb')

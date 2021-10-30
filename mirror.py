@@ -4,6 +4,8 @@ import string
 import subprocess
 import sys
 
+from helpers import seed_auth
+
 
 def ecr_login(repo: string) -> int:
     repo_parts = repo.split(".")
@@ -21,7 +23,7 @@ def ecr_login(repo: string) -> int:
 
     logging_in = \
         subprocess.run(
-            ["skopeo", "login", "-u", "AWS", "--password-stdin", repo],
+            ["skopeo", "login", "--authfile=/tmp/auth.json", "-u", "AWS", "--password-stdin", repo],
             input=auth_password,
             stderr=subprocess.STDOUT,
         )
@@ -35,6 +37,8 @@ if __name__ == '__main__':
     if len(sys.argv) < 3:
         print("Usage: mirror.py source dest1 [dest2 [... destN]]")
         exit(1)
+
+    seed_auth()
 
     # Maintain unique list
     repositories = []
@@ -56,7 +60,7 @@ if __name__ == '__main__':
         for x in dest.split(","):
             # Run skopeo copy for each destination listed.
             copy_result = subprocess.run(
-                ["skopeo", "copy", "--all", "docker://" + sys.argv[1], "docker://" + x],
+                ["skopeo", "copy", "--authfile", "/tmp/auth.json", "--all", "docker://" + sys.argv[1], "docker://" + x],
                 stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL
             )
             if copy_result.returncode > 0:

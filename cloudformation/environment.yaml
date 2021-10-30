@@ -3,6 +3,9 @@ Description: Batch Compute Environment for ECR Mirror Jobs
 
 Parameters:
 
+  Auth:
+    Description: "You must create an SSM parameter with auth file content. Existing external authentication to container repositories (Example empty file: { \"auths\": { } }"
+    Type: AWS::SSM::Parameter::Name
   ComputeSubnets:
     Description: The subnets to launch the mirroring jobs into.
     Type: List<AWS::EC2::Subnet::Id>
@@ -56,6 +59,7 @@ Metadata:
       - Label:
           default: "Compute Environment"
         Parameters:
+          - Auth
           - EnvironmentType
           - MaxVcpu
       - Label:
@@ -64,6 +68,8 @@ Metadata:
           - ComputeVpc
           - ComputeSubnets
     ParameterLabels:
+      Auth:
+        default: "SSM Auth Parameter Name"
       ComputeSubnets:
         default: "Subnets"
       ComputeVpc:
@@ -253,6 +259,15 @@ Resources:
                   - "ecr:TagResource"
                   - "ecr:UploadLayerPart"
                 Resource: "*"
+        - PolicyName: !Join [ "-", [ !Ref "AWS::StackName", "ssm-policy" ]]
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "ssm:GetParameter"
+                Resource:
+                  - !Join [ "/", [!Join [":", ["arn:aws:ssm", !Ref "AWS::Region", !Ref "AWS::AccountId", "parameter"]], !Ref Auth ]]
 
   MirrorJob:
     Type: AWS::Batch::JobDefinition
@@ -263,6 +278,9 @@ Resources:
           - ./mirror.py
           - Ref::source
           - Ref::dest
+        Environment:
+          - Name: CONTAINER_AUTH_PARAMETER
+            Value: !Ref Auth
         ExecutionRoleArn: !GetAtt ExecutionRole.Arn
         Image: !Ref MirrorImageName
         JobRoleArn: !GetAtt MirrorTaskRole.Arn
@@ -304,13 +322,7 @@ Resources:
             Statement:
               - Effect: "Allow"
                 Action:
-                  - "ecr:BatchCheckLayerAvailability"
-                  - "ecr:BatchGetImage"
                   - "ecr:DescribeImages"
-                  - "ecr:DescribeRepositories"
-                  - "ecr:GetAuthorizationToken"
-                  - "ecr:GetDownloadUrlForLayer"
-                  - "ecr:ListImages"
                 Resource: "*"
         - PolicyName: !Join [ "-", [ !Ref "AWS::StackName", "dynamodb-policy" ]]
           PolicyDocument:
@@ -332,6 +344,15 @@ Resources:
                 Resource:
                   - !Ref MirrorJob
                   - !Ref MirrorQueue
+        - PolicyName: !Join [ "-", [ !Ref "AWS::StackName", "ssm-policy" ]]
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "ssm:GetParameter"
+                Resource:
+                  - !Join [ "/", [!Join [":", ["arn:aws:ssm", !Ref "AWS::Region", !Ref "AWS::AccountId", "parameter"]], !Ref Auth ]]
 
   ControllerJob:
     Type: AWS::Batch::JobDefinition
@@ -343,6 +364,9 @@ Resources:
           - !Ref ImageMirrorTable
           - !Ref MirrorQueue
           - !Ref MirrorJob
+        Environment:
+          - Name: CONTAINER_AUTH_PARAMETER
+            Value: !Ref Auth
         ExecutionRoleArn: !GetAtt ExecutionRole.Arn
         Image: !Ref MirrorImageName
         JobRoleArn: !GetAtt ControllerTaskRole.Arn
@@ -377,6 +401,9 @@ Resources:
           - !Ref MirrorJob
           - Ref::repository
           - Ref::tag
+        Environment:
+          - Name: CONTAINER_AUTH_PARAMETER
+            Value: !Ref Auth
         ExecutionRoleArn: !GetAtt ExecutionRole.Arn
         Image: !Ref MirrorImageName
         JobRoleArn: !GetAtt ControllerTaskRole.Arn
