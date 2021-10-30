@@ -25,19 +25,23 @@ def get_ecr_image_digest(image_url: str) -> str:
     )
     ecr_client = boto3.client('ecr', config=ecr_config)
 
-    ecr_image = ecr_client.describe_images(
-        registryId=ecr_account,
-        repositoryName=image_name,
-        imageIds=[
-            {
-                'imageTag': ecr_tag
-            },
-        ]
-    )
-    print(ecr_image)
-    if len(ecr_image['imageDetails']) > 0:
-        return ecr_image['imageDetails'][0]['imageDigest'];
-    else:
+    try:
+        ecr_image = ecr_client.describe_images(
+            registryId=ecr_account,
+            repositoryName=image_name,
+            imageIds=[
+                {
+                    'imageTag': ecr_tag
+                },
+            ]
+        )
+        print(ecr_image)
+        if len(ecr_image['imageDetails']) > 0:
+            return ecr_image['imageDetails'][0]['imageDigest'];
+        else:
+            return ""
+    except ecr_client.exceptions.ImageNotFoundException:
+        print("Image does not exist")
         return ""
 
 
