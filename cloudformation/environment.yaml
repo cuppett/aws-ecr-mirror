@@ -183,7 +183,7 @@ Resources:
       ComputeEnvironmentName: !Join ["-", [!Ref "AWS::StackName", "compute"]]
       ComputeResources:
         MaxvCpus: !Ref MaxVcpu
-        Type: FARGATE_SPOT
+        Type: !Ref EnvironmentType
         SecurityGroupIds:
           - !Ref ComputeSecurityGroup
         Subnets: !Ref ComputeSubnets
