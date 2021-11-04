@@ -47,7 +47,7 @@ comma-separated strings or a string list.
 |-------------------------------------|------------
 | docker.io/library/golang:1.17       | 0123456789.dkr.ecr.us-east-1.amazonaws.com/golang:1.17<br>0123456789.dkr.ecr.us-east-1.amazonaws.com/golang:latest
 | docker.io/library/postgres:14       | 0123456789.dkr.ecr.us-east-1.amazonaws.com/postgres:14,0123456789.dkr.ecr.us-east-1.amazonaws.com/postgres:latest
-| registry.fedoraproject.org/fedora:34| 0123456789.dkr.ecr.us-east-1.amazonaws.com/fedora:34
+| registry.fedoraproject.org/fedora:35| 0123456789.dkr.ecr.us-east-1.amazonaws.com/fedora:35
 
 ## Pre-requisites
 
@@ -75,12 +75,12 @@ The ```dest``` parameters can be either space or comma-separated.
 Example:
 
 ```commandline
-python mirror.py registry.fedoraproject.org/fedora:34 \
-  0123456789.dkr.ecr.us-east-1.amazonaws.com/fedora:34,0123456789.dkr.ecr.us-east-1.amazonaws.com/fedora:latest \ 
-  0123456789.dkr.ecr.us-east-2.amazonaws.com/fedora:34 0123456789.dkr.ecr.us-east-2.amazonaws.com/fedora:latest
+python mirror.py registry.fedoraproject.org/fedora:35 \
+  0123456789.dkr.ecr.us-east-1.amazonaws.com/fedora:35,0123456789.dkr.ecr.us-east-1.amazonaws.com/fedora:latest \ 
+  0123456789.dkr.ecr.us-east-2.amazonaws.com/fedora:35 0123456789.dkr.ecr.us-east-2.amazonaws.com/fedora:latest
 ```
 
-The above will copy the public fedora:34 image to four separate location/tags. 
+The above will copy the public fedora:35 image to four separate location/tags. 
 
 ### Submitting to AWS Batch
 
@@ -92,7 +92,7 @@ aws batch --region us-east-1 submit-job \
   --job-name test \
   --job-queue MirrorQueue-4b9b16a4f56c734 \  
   --job-definition MirrorJob-6cc6ca701f705b0 \  
-  --parameters source=registry.fedoraproject.org/fedora:34,dest=0123456789.dkr.ecr.us-east-1.amazonaws.com/fedora:34
+  --parameters source=registry.fedoraproject.org/fedora:35,dest=0123456789.dkr.ecr.us-east-1.amazonaws.com/fedora:35
 {
     "jobArn": "arn:aws:batch:us-east-1:0123456789:job/28399b82-5a54-4650-a697-6666501a360a",
     "jobName": "test",
