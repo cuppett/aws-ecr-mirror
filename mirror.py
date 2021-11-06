@@ -60,7 +60,7 @@ if __name__ == '__main__':
         for x in dest.split(","):
             # Run skopeo copy for each destination listed.
             copy_result = subprocess.run(
-                ["skopeo", "copy", "--authfile", "/tmp/auth.json", "--all", "docker://" + sys.argv[1], "docker://" + x],
+                ["skopeo", "copy", "--authfile", "/tmp/auth.json", "--retry-times", "5", "--all", "docker://" + sys.argv[1], "docker://" + x],
                 stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL
             )
             if copy_result.returncode > 0:
