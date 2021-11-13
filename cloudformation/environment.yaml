@@ -293,12 +293,14 @@ Resources:
           AssignPublicIp: ENABLED
         ResourceRequirements:
           - Type: MEMORY
-            Value: 512
+            Value: 4096
           - Type: VCPU
-            Value: .25
+            Value: 2
       PlatformCapabilities:
         - FARGATE
       PropagateTags: True
+      RetryStrategy:
+        Attempts: 5
       Timeout:
         AttemptDurationSeconds: 300
       Type: container
@@ -379,7 +381,7 @@ Resources:
           AssignPublicIp: ENABLED
         ResourceRequirements:
           - Type: MEMORY
-            Value: 512
+            Value: 2048
           - Type: VCPU
             Value: .25
       PlatformCapabilities:
