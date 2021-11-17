@@ -242,6 +242,8 @@ Resources:
                 - "ecs-tasks.amazonaws.com"
             Action:
               - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
       Policies:
         - PolicyName: !Join [ "-", [ !Ref "AWS::StackName", "ecr-policy" ]]
           PolicyDocument:
@@ -249,11 +251,7 @@ Resources:
             Statement:
               - Effect: "Allow"
                 Action:
-                  - "ecr:BatchCheckLayerAvailability"
-                  - "ecr:BatchGetImage"
                   - "ecr:CompleteLayerUpload"
-                  - "ecr:GetAuthorizationToken"
-                  - "ecr:GetDownloadUrlForLayer"
                   - "ecr:InitiateLayerUpload"
                   - "ecr:PutImage"
                   - "ecr:TagResource"
