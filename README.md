@@ -23,6 +23,7 @@ and the build jobs needed to use [skopeo] in AWS Batch.
 - [x] Mirror changed images within AWS based on ECR CloudWatch Event Rule trigger
 - [x] Mirror changed images to external repositories on push
 - [x] Mirror to/from authenticated repositories
+- [x] Expire mirroring via TTL (to coincide with support lifecycles)
 
 > Note: For ECR<->ECR replication, you should use the built-in [ECR private replication][ecr-replication] functionality.
 
@@ -43,11 +44,11 @@ and the build jobs needed to use [skopeo] in AWS Batch.
 The core of the mirror table is a source and destination. Destination can be individual strings,
 comma-separated strings or a string list.
 
-| Source                              | Destination
-|-------------------------------------|------------
-| docker.io/library/golang:1.17       | 0123456789.dkr.ecr.us-east-1.amazonaws.com/golang:1.17<br>0123456789.dkr.ecr.us-east-1.amazonaws.com/golang:latest
-| docker.io/library/postgres:14       | 0123456789.dkr.ecr.us-east-1.amazonaws.com/postgres:14,0123456789.dkr.ecr.us-east-1.amazonaws.com/postgres:latest
-| registry.fedoraproject.org/fedora:35| 0123456789.dkr.ecr.us-east-1.amazonaws.com/fedora:35
+| Source                              | Expires (TTL) | Destination
+|-------------------------------------|---------------|--------------
+| docker.io/library/golang:1.17       |               | 0123456789.dkr.ecr.us-east-1.amazonaws.com/golang:1.17<br>0123456789.dkr.ecr.us-east-1.amazonaws.com/golang:latest
+| docker.io/library/postgres:14       | 1656633600    | 0123456789.dkr.ecr.us-east-1.amazonaws.com/postgres:14,0123456789.dkr.ecr.us-east-1.amazonaws.com/postgres:latest
+| registry.fedoraproject.org/fedora:35|               | 0123456789.dkr.ecr.us-east-1.amazonaws.com/fedora:35
 
 ## Pre-requisites
 

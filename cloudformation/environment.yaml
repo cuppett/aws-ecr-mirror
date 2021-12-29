@@ -169,6 +169,9 @@ Resources:
       KeySchema:
       - AttributeName: Source
         KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: Expires
+        Enabled: true
 
   ComputeSecurityGroup:
     Type: AWS::EC2::SecurityGroup
