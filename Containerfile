@@ -1,4 +1,4 @@
-FROM registry.fedoraproject.org/fedora:35
+FROM registry.fedoraproject.org/fedora:36
 
 ENV SUMMARY="Image which allows using skopeo in AWS Batch." \
     DESCRIPTION="Image which allows using skopeo in AWS Batch." \
