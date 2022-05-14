@@ -7,11 +7,11 @@ of our ECR repositories.
 Using the below technologies, we'll automate mirroring images into and out of the 
 AWS cloud:
 
-| AWS service          | Description
-|----------------------|------------
-| [Batch][batch]       | Managed, batch environment. This is perfect for highly-parallel and/or long-running jobs.      
-| [ECR][ecr]           | Managed container image repository.
-| [DynamoDB][dynamodb] | Scalable NoSQL storage for easy key/value storage and retrieval across many AWS services and APIs.
+| AWS service          | Description                                                                                        |
+|----------------------|----------------------------------------------------------------------------------------------------|
+| [Batch][batch]       | Managed, batch environment. This is perfect for highly-parallel and/or long-running jobs.          |
+| [ECR][ecr]           | Managed container image repository.                                                                |
+| [DynamoDB][dynamodb] | Scalable NoSQL storage for easy key/value storage and retrieval across many AWS services and APIs. |
 
 This repository provides the templates and descriptions needed to provision container image repositories
 and the build jobs needed to use [skopeo] in AWS Batch.
@@ -44,11 +44,11 @@ and the build jobs needed to use [skopeo] in AWS Batch.
 The core of the mirror table is a source and destination. Destination can be individual strings,
 comma-separated strings or a string list.
 
-| Source                              | Expires (TTL) | Destination
-|-------------------------------------|---------------|--------------
-| docker.io/library/golang:1.17       |               | 0123456789.dkr.ecr.us-east-1.amazonaws.com/golang:1.17<br>0123456789.dkr.ecr.us-east-1.amazonaws.com/golang:latest
-| docker.io/library/postgres:14       | 1656633600    | 0123456789.dkr.ecr.us-east-1.amazonaws.com/postgres:14,0123456789.dkr.ecr.us-east-1.amazonaws.com/postgres:latest
-| registry.fedoraproject.org/fedora:35|               | 0123456789.dkr.ecr.us-east-1.amazonaws.com/fedora:35
+| Source                               | Expires (TTL) | Destination                                                                                                        |
+|--------------------------------------|---------------|--------------------------------------------------------------------------------------------------------------------|
+| docker.io/library/golang:1.17        |               | 0123456789.dkr.ecr.us-east-1.amazonaws.com/golang:1.17<br>0123456789.dkr.ecr.us-east-1.amazonaws.com/golang:latest |
+| docker.io/library/postgres:14        | 1656633600    | 0123456789.dkr.ecr.us-east-1.amazonaws.com/postgres:14,0123456789.dkr.ecr.us-east-1.amazonaws.com/postgres:latest  |
+| registry.fedoraproject.org/fedora:35 |               | 0123456789.dkr.ecr.us-east-1.amazonaws.com/fedora:35                                                               |
 
 ## Pre-requisites
 
