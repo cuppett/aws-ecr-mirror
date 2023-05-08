@@ -7,10 +7,11 @@ import sys
 from helpers import seed_auth
 
 
-def ecr_login(repo: string) -> int:
-    repo_parts = repo.split(".")
-    ecr = boto3.client("ecr", region_name=repo_parts[3])
-
+def aws_login(ecr, ecr_repository: string) -> int:
+    """Logs into AWS ECR using the provided password.
+    The boto client library is toggled before calling this function and then used to fetch the authorization token
+    which is then decoded and passed to skopeo login.
+    """
     # Logging into the repository
     auth_token = ecr.get_authorization_token()
     if auth_token is None or \
@@ -23,15 +24,23 @@ def ecr_login(repo: string) -> int:
 
     logging_in = \
         subprocess.run(
-            ["skopeo", "login", "--authfile=/tmp/auth.json", "-u", "AWS", "--password-stdin", repo],
+            ["skopeo", "login", "--authfile=/tmp/auth.json", "-u", "AWS", "--password-stdin", ecr_repository],
             input=auth_password,
             stderr=subprocess.STDOUT,
         )
 
     if logging_in.returncode != 0:
-        print("Failure logging in to " + repo)
+        print("Failure logging in to " + ecr_repository)
     return logging_in.returncode
 
+def ecr_login(repo: string) -> int:
+    repo_parts = repo.split(".")
+    ecr = boto3.client("ecr", region_name=repo_parts[3])
+    return aws_login(ecr, repo)
+
+def ecr_public_login(repo: string) -> int:
+    ecr = boto3.client("ecr-public")
+    return aws_login(ecr, repo)
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
@@ -53,6 +62,20 @@ if __name__ == '__main__':
                     # Login in uniquely
                     repositories.append(repository)
                     rc = ecr_login(repository)
+                    if rc > 0:
+                        exit(rc)
+            elif "public.ecr" in x:
+                # Split the string into a list of substrings using '/' as a delimiter
+                substrings = x.split('/')
+                # The first substring is the hostname, the second is the account
+                # The third is the repository, which we don't need
+                repository = "/".join(substrings[:2])
+
+                # Check against unique hostname list
+                if repository not in repositories:
+                    # Login in uniquely
+                    repositories.append(repository)
+                    rc = ecr_public_login(repository)
                     if rc > 0:
                         exit(rc)
 

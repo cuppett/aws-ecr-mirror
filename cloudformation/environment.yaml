@@ -246,20 +246,9 @@ Resources:
             Action:
               - "sts:AssumeRole"
       ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+        - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+        - "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicPowerUser"
       Policies:
-        - PolicyName: !Join [ "-", [ !Ref "AWS::StackName", "ecr-policy" ]]
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: "Allow"
-                Action:
-                  - "ecr:CompleteLayerUpload"
-                  - "ecr:InitiateLayerUpload"
-                  - "ecr:PutImage"
-                  - "ecr:TagResource"
-                  - "ecr:UploadLayerPart"
-                Resource: "*"
         - PolicyName: !Join [ "-", [ !Ref "AWS::StackName", "ssm-policy" ]]
           PolicyDocument:
             Version: "2012-10-17"
