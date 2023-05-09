@@ -14,13 +14,23 @@ def aws_login(ecr, ecr_repository: string) -> int:
     """
     # Logging into the repository
     auth_token = ecr.get_authorization_token()
+
     if auth_token is None or \
-            len(auth_token["authorizationData"]) == 0 or \
-            "authorizationToken" not in auth_token["authorizationData"][0]:
-        print("Failure fetching authorization token.")
+            len(auth_token["authorizationData"]) == 0:
+        print("Failure fetching authorization data.")
         return 2
+
+    try:
+        auth_data = auth_token["authorizationData"][0]
+    except KeyError:
+        auth_data = auth_token["authorizationData"]
+
+    if "authorizationToken" not in auth_data:
+        print("Failure finding authorization token.")
+        return 3
+
     # The authorizationToken is a base64 encoded version of 'AWS:my_password_here'
-    auth_password = base64.b64decode(auth_token["authorizationData"][0]["authorizationToken"])[4:]
+    auth_password = base64.b64decode(auth_data["authorizationToken"])[4:]
 
     logging_in = \
         subprocess.run(
