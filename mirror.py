@@ -49,7 +49,7 @@ def ecr_login(repo: string) -> int:
     return aws_login(ecr, repo)
 
 def ecr_public_login(repo: string) -> int:
-    ecr = boto3.client("ecr-public")
+    ecr = boto3.client("ecr-public", region_name="us-east-1")
     return aws_login(ecr, repo)
 
 if __name__ == '__main__':
