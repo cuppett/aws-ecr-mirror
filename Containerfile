@@ -1,4 +1,4 @@
-FROM registry.fedoraproject.org/fedora:38
+FROM registry.fedoraproject.org/fedora:39
 
 ENV SUMMARY="Image which allows using skopeo in AWS Batch." \
     DESCRIPTION="Image which allows using skopeo in AWS Batch." \
@@ -13,7 +13,8 @@ LABEL summary="$SUMMARY" \
       name="$FGC/$NAME" \
       version="$VERSION" \
       usage="This image can be used inside AWS Batch to perform container inspection and copies." \
-      maintainer="Stephen Cuppett <scuppett@redhat.com>"
+      maintainer="Stephen Cuppett <steve@cuppett.com>" \
+      org.opencontainers.image.source="https://github.com/cuppett/aws-ecr-mirror"
 
 # Installing OS support
 RUN set -ex; \
