@@ -1,9 +1,8 @@
-FROM registry.fedoraproject.org/fedora:40
+FROM quay.io/skopeo/stable
 
 ENV SUMMARY="Image which allows using skopeo in AWS Batch." \
     DESCRIPTION="Image which allows using skopeo in AWS Batch." \
-    NAME=aws-batch-skopeo \
-    VERSION=38
+    NAME=aws-batch-skopeo
 
 LABEL summary="$SUMMARY" \
       description="$DESCRIPTION" \
@@ -19,18 +18,14 @@ LABEL summary="$SUMMARY" \
 # Installing OS support
 RUN set -ex; \
     \
+    dnf -y update; \
     dnf -y install \
-        python3 \
         python3-pip \
-        skopeo \
     ; \
     dnf -y clean all; \
     rm -rf /var/cache/dnf
 
-# Preparing container tools support for non-systemd systems
-RUN set -ex; \
-    echo "[engine]" > /etc/containers/containers.conf; \
-    echo "events_logger = \"file\"" >> /etc/containers/containers.conf;
-
 COPY requirements.txt controller.py mirror.py helpers.py ./
 RUN pip install -r requirements.txt
+
+ENTRYPOINT [""]
