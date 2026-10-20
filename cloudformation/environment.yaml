@@ -30,7 +30,7 @@ Parameters:
     Default: 8
     MinValue: 1
   MirroringFrequency:
-    Description: Scheduled invocation of the batch mirroring
+    Description: Scheduled invocation of the batch mirroring (use 'none' to disable, 'custom' for cron expression, or predefined rates)
     Type: String
     Default: none
     AllowedValues:
@@ -42,6 +42,12 @@ Parameters:
       - "7 days"
       - "14 days"
       - "28 days"
+      - "custom"
+  CronExpression:
+    Description: Custom cron expression (only used when MirroringFrequency is 'custom').
+    Type: String
+    Default: "cron(0 2 * * ? *)"
+    ConstraintDescription: Must be a valid AWS EventBridge cron expression
   MirrorImageName:
     Description: Mirroring image name and tag
     Type: String
@@ -82,11 +88,14 @@ Metadata:
         default: "Maximum VCPUs"
       MirroringFrequency:
         default: "Mirroring Frequency"
+      CronExpression:
+        default: "Cron Expression"
       MirrorImageName:
         default: "Mirror Image Name"
 
 Conditions:
-  HasRate: !Not [!Equals ["none", !Ref MirroringFrequency]]
+  UseCustomCron: !Equals ["custom", !Ref MirroringFrequency]
+  UseStandardRate: !And [!Not [!Equals ["none", !Ref MirroringFrequency]], !Not [!Equals ["custom", !Ref MirroringFrequency]]]
 
 Resources:
 
@@ -117,7 +126,7 @@ Resources:
 
   MirroringTimedRule:
     Type: AWS::Events::Rule
-    Condition: HasRate
+    Condition: UseStandardRate
     Properties:
       Description: !Join [" ", ["Run every", !Ref MirroringFrequency]]
       ScheduleExpression: !Join ["", ["rate(", !Ref MirroringFrequency, ")"]]
@@ -128,6 +137,20 @@ Resources:
           BatchParameters:
             JobDefinition: !Ref ControllerJob
             JobName: "timed-mirror-job"
+
+  MirroringCronRule:
+    Type: AWS::Events::Rule
+    Condition: UseCustomCron
+    Properties:
+      Description: !Join [" ", ["Run on cron schedule:", !Ref CronExpression]]
+      ScheduleExpression: !Ref CronExpression
+      Targets:
+        - Arn: !Ref ControlQueue
+          RoleArn: !GetAtt MirroringEventRole.Arn
+          Id: !Join ["-", ["mirror", "cron", !Ref "AWS::StackName"]]
+          BatchParameters:
+            JobDefinition: !Ref ControllerJob
+            JobName: "cron-mirror-job"
 
   ChangedImageRule:
     Type: AWS::Events::Rule
@@ -154,7 +177,7 @@ Resources:
             InputPathsMap:
               "Repository": "$.detail.repository-name"
               "Tag": "$.detail.image-tag"
-            InputTemplate:  |
+            InputTemplate: |
               {
                  "Parameters" : {"repository": <Repository>, "tag": <Tag>}
               }
