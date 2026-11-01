@@ -24,6 +24,12 @@ Parameters:
     Type: Number
     MinValue: 1
     Default: 7
+
+  ErrorAlarmSnsTopicArn:
+    Description: Optional SNS topic ARN for error alerts (empty disables). Alarms publish on ERROR/Failure/Traceback matches in the mirror and controller logs. The topic policy must allow cloudwatch.amazonaws.com to publish (one-time setup, see README).
+    Type: String
+    Default: ""
+    AllowedPattern: "^$|^arn:aws(-cn)?:sns:[a-z0-9-]+:[0-9]{12}:.+$"
   MaxVcpu:
     Description: The maximum amount of concurrent CPUs to use for jobs.
     Type: Number
@@ -63,6 +69,10 @@ Metadata:
           - MirroringFrequency
           - LogRetention
       - Label:
+          default: "Error Alerting"
+        Parameters:
+          - ErrorAlarmSnsTopicArn
+      - Label:
           default: "Compute Environment"
         Parameters:
           - Auth
@@ -94,6 +104,7 @@ Metadata:
         default: "Mirror Image Name"
 
 Conditions:
+  HasErrorAlarm: !Not [!Equals ["", !Ref ErrorAlarmSnsTopicArn]]
   UseCustomCron: !Equals ["custom", !Ref MirroringFrequency]
   UseStandardRate: !And [!Not [!Equals ["none", !Ref MirroringFrequency]], !Not [!Equals ["custom", !Ref MirroringFrequency]]]
 
@@ -236,10 +247,74 @@ Resources:
     Properties:
       RetentionInDays: !Ref LogRetention
 
+  ControllerErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: HasErrorAlarm
+    Properties:
+      LogGroupName: !Ref ContainerControllerLogGroup
+      FilterPattern: "?ERROR ?Failure ?Traceback"
+      MetricTransformations:
+        - MetricValue: "1"
+          MetricNamespace: ECRMirror
+          MetricName: ControllerJobErrors
+          DefaultValue: 0
+
+  MirrorErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasErrorAlarm
+    Properties:
+      AlarmName: !Join ["-", [!Ref "AWS::StackName", "mirror-job-errors"]]
+      AlarmDescription: "Errors matching ERROR/Failure/Traceback in the aws-ecr-mirror job logs. Metric is 1 per matching log line, summed over 5 minutes."
+      Namespace: ECRMirror
+      MetricName: MirrorJobErrors
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ErrorAlarmSnsTopicArn
+      OKActions:
+        - !Ref ErrorAlarmSnsTopicArn
+
+  ControllerErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasErrorAlarm
+    Properties:
+      AlarmName: !Join ["-", [!Ref "AWS::StackName", "controller-job-errors"]]
+      AlarmDescription: "Errors matching ERROR/Failure/Traceback in the aws-ecr-mirror controller logs. Metric is 1 per matching log line, summed over 5 minutes."
+      Namespace: ECRMirror
+      MetricName: ControllerJobErrors
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ErrorAlarmSnsTopicArn
+      OKActions:
+        - !Ref ErrorAlarmSnsTopicArn
+
   ContainerMirrorLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       RetentionInDays: !Ref LogRetention
+
+  MirrorErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: HasErrorAlarm
+    Properties:
+      LogGroupName: !Ref ContainerMirrorLogGroup
+      FilterPattern: "?ERROR ?Failure ?Traceback"
+      MetricTransformations:
+        - MetricValue: "1"
+          MetricNamespace: ECRMirror
+          MetricName: MirrorJobErrors
+          DefaultValue: 0
 
   ExecutionRole:
     Type: AWS::IAM::Role

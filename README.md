@@ -83,6 +83,39 @@ python mirror.py registry.fedoraproject.org/fedora:35 \
 
 The above will copy the public fedora:35 image to four separate location/tags. 
 
+## Error Alerting
+
+The `environment.yaml` stack takes an optional `ErrorAlarmSnsTopicArn` parameter.
+When set, metric filters on the mirror and controller log groups count every log
+line matching `ERROR`, `Failure`, or `Traceback` (the strings the job scripts
+print on failure), summed per 5 minutes into the `ECRMirror` namespace
+(`MirrorJobErrors` / `ControllerJobErrors`). Alarms
+`<stack>-mirror-job-errors` / `<stack>-controller-job-errors` fire to the topic
+on any match and send an OK when the following period is clean. Leave the
+parameter empty to disable.
+
+One-time topic setup: CloudWatch **alarms** publish with the
+`cloudwatch.amazonaws.com` service principal, which a stock SNS topic policy
+does not allow (EventBridge's `events.amazonaws.com` grant is a different
+service). Add to the topic's policy:
+
+```json
+{
+  "Sid": "TrustCWAlarmToPublishEventsToMyTopic",
+  "Effect": "Allow",
+  "Principal": {"Service": "cloudwatch.amazonaws.com"},
+  "Action": "sns:Publish",
+  "Resource": "<topic arn>",
+  "Condition": {"StringEquals": {"AWS:SourceAccount": "<account id>"}}
+}
+```
+
+Without it the alarm still transitions to ALARM but the notification is
+silently denied. Verify with a synthetic line
+(`aws logs put-log-events` an `ERROR: ... test` message, then check
+`cloudwatch get-metric-data` and the alarm state — expect one ALARM email
+followed by an OK).
+
 ### Submitting to AWS Batch
 
 Now that we have a job environment and queues for these things, we can easily submit jobs independently of the system
