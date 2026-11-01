@@ -43,6 +43,9 @@ def get_ecr_image_digest(image_url: str) -> str:
     except ecr_client.exceptions.ImageNotFoundException:
         print("Image does not exist")
         return ""
+    except ecr_client.exceptions.RepositoryNotFoundException:
+        print("Repository does not exist: " + image_name)
+        return ""
 
 
 def get_image_digest(image_url: str) -> str:
@@ -50,11 +53,14 @@ def get_image_digest(image_url: str) -> str:
         return get_ecr_image_digest(image_url)
     else:
         result = subprocess.run(
-            ["skopeo", "--command-timeout", "10s", "inspect", "--authfile", "/tmp/auth.json", "--retry-times", "5", "--format", "'{{ .Digest }}'",
+            ["skopeo", "--command-timeout", "10s", "inspect", "--no-tags", "--authfile", "/tmp/auth.json", "--retry-times", "5", "--format", "'{{ .Digest }}'",
              "docker://" + image_url],
             capture_output=True
         )
         print(result)
+        if result.returncode != 0:
+            print("ERROR: failed to inspect " + image_url + ": " + result.stderr.decode('UTF-8').strip())
+            return ""
         result_digest = result.stdout.decode('UTF-8').strip().strip("'")
         return result_digest
 
@@ -75,6 +81,7 @@ def identify_targets(row: dict) -> list:
     # Check the tags
     source_digest = get_image_digest(row["Source"])
     if len(source_digest) < 64:
+        print("Unable to determine source digest for " + row["Source"] + "; skipping.")
         return []
 
     to_remove = []
