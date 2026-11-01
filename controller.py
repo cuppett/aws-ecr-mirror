@@ -59,7 +59,14 @@ def get_image_digest(image_url: str) -> str:
         )
         print(result)
         if result.returncode != 0:
-            print("ERROR: failed to inspect " + image_url + ": " + result.stderr.decode('UTF-8').strip())
+            error_message = result.stderr.decode('UTF-8').strip()
+            # A missing remote tag ("manifest unknown") is the expected state on
+            # first sync: the destination does not exist yet, so it must be
+            # mirrored. Log it as informational noise, not a pageable error.
+            if "manifest unknown" in error_message:
+                print("Destination does not exist yet: " + image_url)
+                return ""
+            print("ERROR: failed to inspect " + image_url + ": " + error_message)
             return ""
         result_digest = result.stdout.decode('UTF-8').strip().strip("'")
         return result_digest
