@@ -91,8 +91,10 @@ line matching `ERROR`, `Failure`, or `Traceback` (the strings the job scripts
 print on failure), summed per 5 minutes into the `ECRMirror` namespace
 (`MirrorJobErrors` / `ControllerJobErrors`). Alarms
 `<stack>-mirror-job-errors` / `<stack>-controller-job-errors` fire to the topic
-on any match and send an OK when the following period is clean. Leave the
-parameter empty to disable.
+on any match. Deliberately no OK actions: a quiet 5-minute period is not
+recovery — it only means no further errors were logged, and a real failure still
+needs investigating regardless of what happens afterward. Leave the parameter
+empty to disable.
 
 One-time topic setup: CloudWatch **alarms** publish with the
 `cloudwatch.amazonaws.com` service principal, which a stock SNS topic policy
@@ -114,7 +116,7 @@ Without it the alarm still transitions to ALARM but the notification is
 silently denied. Verify with a synthetic line
 (`aws logs put-log-events` an `ERROR: ... test` message, then check
 `cloudwatch get-metric-data` and the alarm state — expect one ALARM email
-followed by an OK).
+only; the alarm resets to OK silently after the clean period).
 
 ### Submitting to AWS Batch
 

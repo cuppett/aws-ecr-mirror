@@ -276,8 +276,6 @@ Resources:
       TreatMissingData: notBreaching
       AlarmActions:
         - !Ref ErrorAlarmSnsTopicArn
-      OKActions:
-        - !Ref ErrorAlarmSnsTopicArn
 
   ControllerErrorAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -295,8 +293,6 @@ Resources:
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
       AlarmActions:
-        - !Ref ErrorAlarmSnsTopicArn
-      OKActions:
         - !Ref ErrorAlarmSnsTopicArn
 
   ContainerMirrorLogGroup:
