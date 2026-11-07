@@ -53,7 +53,7 @@ def get_image_digest(image_url: str) -> str:
         return get_ecr_image_digest(image_url)
     else:
         result = subprocess.run(
-            ["skopeo", "--command-timeout", "10s", "inspect", "--no-tags", "--authfile", "/tmp/auth.json", "--retry-times", "5", "--format", "'{{ .Digest }}'",
+            ["skopeo", "--command-timeout", "30s", "inspect", "--no-tags", "--authfile", "/tmp/auth.json", "--retry-times", "5", "--format", "'{{ .Digest }}'",
              "docker://" + image_url],
             capture_output=True
         )
