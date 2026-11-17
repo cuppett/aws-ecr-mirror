@@ -252,7 +252,7 @@ Resources:
     Condition: HasErrorAlarm
     Properties:
       LogGroupName: !Ref ContainerControllerLogGroup
-      FilterPattern: "?ERROR ?Failure ?Traceback"
+      FilterPattern: "?ERROR ?Failure ?Traceback ?fatal"
       MetricTransformations:
         - MetricValue: "1"
           MetricNamespace: ECRMirror
@@ -264,7 +264,7 @@ Resources:
     Condition: HasErrorAlarm
     Properties:
       AlarmName: !Join ["-", [!Ref "AWS::StackName", "mirror-job-errors"]]
-      AlarmDescription: "Errors matching ERROR/Failure/Traceback in the aws-ecr-mirror job logs. Metric is 1 per matching log line, summed over 5 minutes."
+      AlarmDescription: "Errors matching ERROR/Failure/Traceback/fatal in the aws-ecr-mirror job logs. Metric is 1 per matching log line, summed over 5 minutes."
       Namespace: ECRMirror
       MetricName: MirrorJobErrors
       Statistic: Sum
@@ -282,7 +282,7 @@ Resources:
     Condition: HasErrorAlarm
     Properties:
       AlarmName: !Join ["-", [!Ref "AWS::StackName", "controller-job-errors"]]
-      AlarmDescription: "Errors matching ERROR/Failure/Traceback in the aws-ecr-mirror controller logs. Metric is 1 per matching log line, summed over 5 minutes."
+      AlarmDescription: "Errors matching ERROR/Failure/Traceback/fatal in the aws-ecr-mirror controller logs. Metric is 1 per matching log line, summed over 5 minutes."
       Namespace: ECRMirror
       MetricName: ControllerJobErrors
       Statistic: Sum
@@ -305,7 +305,7 @@ Resources:
     Condition: HasErrorAlarm
     Properties:
       LogGroupName: !Ref ContainerMirrorLogGroup
-      FilterPattern: "?ERROR ?Failure ?Traceback"
+      FilterPattern: "?ERROR ?Failure ?Traceback ?fatal"
       MetricTransformations:
         - MetricValue: "1"
           MetricNamespace: ECRMirror
