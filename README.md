@@ -87,8 +87,10 @@ The above will copy the public fedora:35 image to four separate location/tags.
 
 The `environment.yaml` stack takes an optional `ErrorAlarmSnsTopicArn` parameter.
 When set, metric filters on the mirror and controller log groups count every log
-line matching `ERROR`, `Failure`, or `Traceback` (the strings the job scripts
-print on failure), summed per 5 minutes into the `ECRMirror` namespace
+line matching `ERROR`, `Failure`, `Traceback`, or `fatal` (the strings the job
+scripts print on failure — skopeo emits `level=fatal msg=...` on copy/push
+failures, which must not be missed), summed per 5 minutes into the `ECRMirror`
+namespace
 (`MirrorJobErrors` / `ControllerJobErrors`). Alarms
 `<stack>-mirror-job-errors` / `<stack>-controller-job-errors` fire to the topic
 on any match. Deliberately no OK actions: a quiet 5-minute period is not
